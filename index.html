@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>DW POS Dashboard</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand"><span class="logo">DW</span><div><b id="outletName">DW POS</b><small id="who">Dashboard pemilik</small></div></div>
+    <div class="top-actions" id="topActions" hidden>
+      <select id="outletSelect" aria-label="Pilih outlet" hidden></select>
+      <button class="ghost" id="refreshBtn" title="Muat ulang">↻</button>
+      <button class="ghost" id="logoutBtn">Keluar</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- Login -->
+    <section id="loginView" class="login" hidden>
+      <div class="card login-card">
+        <h1>Masuk</h1>
+        <p class="muted">Pakai email &amp; kata sandi akun cloud yang sama dengan di aplikasi kasir.</p>
+        <form id="loginForm">
+          <label>Email<input type="email" id="email" autocomplete="username" required></label>
+          <label>Kata sandi<input type="password" id="password" autocomplete="current-password" required></label>
+          <button type="submit" id="loginBtn">Masuk</button>
+          <p class="error" id="loginError" hidden></p>
+        </form>
+        <p class="muted small">Lupa kata sandi? Ganti lewat aplikasi kasir: Cloud &amp; backup → Lupa kata sandi.</p>
+      </div>
+    </section>
+
+    <!-- Dashboard -->
+    <section id="dashView" hidden>
+      <div class="toolbar">
+        <div class="chips" id="periodChips">
+          <button data-p="today" class="on">Hari ini</button>
+          <button data-p="yesterday">Kemarin</button>
+          <button data-p="week">7 hari</button>
+          <button data-p="month">Bulan ini</button>
+          <button data-p="custom">Pilih tanggal</button>
+        </div>
+        <div class="custom" id="customRange" hidden>
+          <input type="date" id="fromDate" aria-label="Dari tanggal"> – <input type="date" id="toDate" aria-label="Sampai tanggal">
+          <button id="applyRange">Terapkan</button>
+        </div>
+        <span class="muted small" id="updatedAt"></span>
+      </div>
+
+      <div id="liveShift"></div>
+
+      <div class="kpis" id="kpis"></div>
+
+      <div class="grid2">
+        <div class="card"><h2>Omzet per jam</h2><div id="hourChart" class="hours"></div></div>
+        <div class="card"><h2>Penerimaan per metode</h2><div id="methods"></div></div>
+      </div>
+
+      <div class="grid2">
+        <div class="card"><h2>Menu terlaris</h2><div id="topItems"></div></div>
+        <div class="card"><h2>Belanja</h2><div id="expenses"></div></div>
+      </div>
+
+      <div class="card">
+        <div class="row-between"><h2>Laporan tutup kasir</h2></div>
+        <div class="table-wrap"><table id="shiftTable"></table></div>
+      </div>
+
+      <div class="card">
+        <div class="row-between"><h2>Transaksi</h2><button class="ghost" id="exportBtn">Unduh CSV (Excel)</button></div>
+        <div class="table-wrap"><table id="orderTable"></table></div>
+      </div>
+
+      <p class="muted small foot">Data dikirim tablet kasir ke cloud setiap ±30 detik saat ada internet. Bila tablet offline, angka di sini menyusul setelah tersambung.</p>
+    </section>
+
+    <div id="loading" class="loading" hidden>Memuat…</div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
