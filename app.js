@@ -127,11 +127,19 @@ async function start() {
     $('liveShift').innerHTML = '<div class="card">Akun ini belum punya outlet. Hubungkan aplikasi kasir ke cloud dulu.</div>';
     return;
   }
+  // Aktivitas terakhir tiap outlet (data terakhir yang dikirim perangkat), agar
+  // outlet lama hasil "daftar ulang" mudah dibedakan dari outlet yang dipakai.
+  await Promise.all(outlets.map(async (o) => {
+    const { data } = await sb.from('audit_log').select('at').eq('outlet_id', o.id).order('at', { ascending: false }).limit(1);
+    o.lastAt = data && data[0] ? data[0].at : null;
+  }));
+  outlets.sort((a, b) => new Date(b.lastAt || 0) - new Date(a.lastAt || 0));
   state.outlets = outlets;
   const saved = localStorageGet('outlet');
   state.outletId = outlets.some((o) => o.id === saved) ? saved : outlets[0].id;
   const sel = $('outletSelect');
-  sel.innerHTML = outlets.map((o) => `<option value="${esc(o.id)}">${esc(o.name)}</option>`).join('');
+  const sameName = new Set(outlets.map((o) => o.name)).size < outlets.length;
+  sel.innerHTML = outlets.map((o) => `<option value="${esc(o.id)}">${esc(o.name)}${sameName || outlets.length > 1 ? ` · aktif ${o.lastAt ? dmy(o.lastAt) + ' ' + hhmm(o.lastAt) : '-'}` : ''}</option>`).join('');
   sel.value = state.outletId;
   sel.hidden = outlets.length < 2;
 
@@ -173,6 +181,8 @@ async function load() {
 
     // Shift berjalan: uang diterima di shift itu.
     const live = openShifts[0];
+    state.openShifts = openShifts;
+    state.lastAt = state.outlets.find((o) => o.id === oid)?.lastAt;
     const livePays = live ? await fetchAll(() => sb.from('payments').select('amount,method,order_id').eq('shift_id', live.id)) : [];
     const liveExp = live ? await fetchAll(() => sb.from('expenses').select('amount').eq('shift_id', live.id).is('voided_at', null)) : [];
     const liveMoves = live ? await fetchAll(() => sb.from('cash_movements').select('direction,amount').eq('shift_id', live.id)) : [];
@@ -201,7 +211,7 @@ async function load() {
 // ------------------------------------------------------------ tampilan
 function renderLive(shift, pays, exps, moves, openOrders) {
   if (!shift) {
-    $('liveShift').innerHTML = `<div class="card live"><span><span class="dot closed"></span><b>Kasir sedang tutup</b></span><span class="muted">Belum ada shift berjalan.</span></div>`;
+    $('liveShift').innerHTML = `<div class="card live"><span><span class="dot closed"></span><b>Kasir sedang tutup</b></span><span class="muted">Belum ada shift berjalan.</span><span class="muted small">Data terakhir dari perangkat: ${state.lastAt ? dmy(state.lastAt) + ' ' + hhmm(state.lastAt) : '-'}</span></div>`;
     return;
   }
   const received = sum(pays, (p) => p.amount);
@@ -209,14 +219,22 @@ function renderLive(shift, pays, exps, moves, openOrders) {
   const cin = sum(moves.filter((m) => m.direction === 'in'), (m) => m.amount);
   const cout = sum(moves.filter((m) => m.direction === 'out'), (m) => m.amount);
   const expected = shift.opening_cash + cash + cin - cout;
+  const ageH = (Date.now() - new Date(shift.opened_at)) / 3600000;
+  const others = (state.openShifts || []).slice(1);
+  const warn = ageH > 14 || others.length
+    ? `<div class="warn">⚠ ${ageH > 14 ? `Shift ini dibuka ${Math.floor(ageH)} jam lalu dan menurut cloud belum ditutup. ` : ''}${others.length ? `Ada ${others.length + 1} shift terbuka di cloud. ` : ''}
+       Kemungkinan: (1) sudah ditutup di perangkat tetapi belum terkirim, cek ikon awan di tablet/HP harus centang; (2) dashboard sedang menampilkan outlet lama, pilih outlet lain di kanan atas; (3) shift dibuka di perangkat yang datanya sudah dihapus.</div>`
+    : '';
   $('liveShift').innerHTML = `
     <div class="card live">
-      <span><span class="dot"></span><b>Shift ${esc(state.names[shift.employee_id] || '-')}</b> <span class="muted">sejak ${hhmm(shift.opened_at)}</span></span>
+      <span><span class="dot"></span><b>Shift ${esc(state.names[shift.employee_id] || '-')}</b> <span class="muted">sejak ${dmy(shift.opened_at)} ${hhmm(shift.opened_at)}</span></span>
       <span>Diterima <b>${rp(received)}</b></span>
       <span>Lunas <b>${new Set(pays.map((p) => p.order_id)).size}</b></span>
       <span>Belum dibayar <b>${openOrders.length}</b> <span class="muted">(${rp(sum(openOrders, (o) => o.total))})</span></span>
       <span>Belanja <b>${rp(sum(exps, (e) => e.amount))}</b></span>
       <span>Laci menurut sistem <b>${rp(expected)}</b></span>
+      <span class="muted small">Data terakhir dari perangkat: ${state.lastAt ? dmy(state.lastAt) + ' ' + hhmm(state.lastAt) : '-'}</span>
+      ${warn}
     </div>`;
 }
 

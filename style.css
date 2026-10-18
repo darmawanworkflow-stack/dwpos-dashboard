@@ -91,3 +91,5 @@ td.num, th.num { text-align: right; }
   .kpi b { font-size: 20px; }
   .hours small { display: none; }
 }
+
+.warn { flex-basis: 100%; background: #fbe9d7; color: #6b3d1f; border-radius: 12px; padding: 10px 12px; font-size: 14px; }
