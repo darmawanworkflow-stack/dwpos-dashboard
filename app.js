@@ -196,6 +196,12 @@ async function load() {
     renderMethods(payments);
     renderItems(lines);
     renderExpenses(expenses);
+    // Shift yang angka lacinya dikoreksi pemilik/manager.
+    const corrected = shifts.length
+      ? await fetchIn('audit_log', 'entity_id,detail', 'entity_id', shifts.map((x) => x.id), (q) => q.eq('action', 'shift.correct'))
+      : [];
+    state.corrections = {};
+    for (const c of corrected) (state.corrections[c.entity_id] ||= []).push(c.detail || {});
     renderShifts(shifts);
     renderOrders();
     $('updatedAt').textContent = 'Diperbarui ' + hhmm(new Date().toISOString());
@@ -309,7 +315,7 @@ function renderShifts(shifts) {
       <td class="num">${rp(s.opening_cash)}</td>
       <td class="num">${open ? '-' : rp(s.expected_cash)}</td>
       <td class="num">${open ? '-' : rp(s.counted_cash)}</td>
-      <td class="num">${diffCell}</td>
+      <td class="num">${diffCell}${state.corrections?.[s.id] ? ` <span class="tag" title="${esc(state.corrections[s.id].map((d) => d.reason).join(' | '))}">dikoreksi</span>` : ''}</td>
       <td class="num">${s.deposited_cash ? rp(s.deposited_cash) : '-'}</td>
       <td>${s.reviewed_at ? '✓' : open ? '' : '<span class="muted">belum</span>'}</td>
     </tr>`;
