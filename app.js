@@ -158,7 +158,7 @@ async function load() {
   $('outletName').textContent = state.outlets.find((o) => o.id === oid)?.name || 'DW POS';
   setLoading(true);
   try {
-    const [employees, paid, voided, payments, expenses, shifts, openShifts, openOrders] = await Promise.all([
+    const [employees, paid, voidedAll, payments, expenses, shifts, openShifts, openOrders] = await Promise.all([
       fetchAll(() => sb.from('employees').select('id,name').eq('outlet_id', oid)),
       fetchAll(() => sb.from('orders').select('id,receipt_number,table_label,customer_name,order_type,total,discount_total,paid_at,created_at,employee_id,status').eq('outlet_id', oid).eq('status', 'paid').gte('paid_at', F).lt('paid_at', T).order('paid_at')),
       fetchAll(() => sb.from('orders').select('id,receipt_number,table_label,customer_name,order_type,total,voided_at,void_reason,created_at,status').eq('outlet_id', oid).eq('status', 'voided').gte('voided_at', F).lt('voided_at', T)),
@@ -187,6 +187,8 @@ async function load() {
     const liveExp = live ? await fetchAll(() => sb.from('expenses').select('amount').eq('shift_id', live.id).is('voided_at', null)) : [];
     const liveMoves = live ? await fetchAll(() => sb.from('cash_movements').select('direction,amount').eq('shift_id', live.id)) : [];
 
+    // Pesanan yang digabung ke meja lain (Rp0) bukan pembatalan.
+    const voided = voidedAll.filter((o) => !(o.void_reason || '').startsWith('Digabung ke '));
     state.orders = paid.map((o) => ({ ...o, _status: 'Lunas' })).concat(voided.map((o) => ({ ...o, _status: 'Batal', paid_at: o.voided_at })));
     state.orders.sort((a, b) => new Date(a.paid_at) - new Date(b.paid_at));
 
